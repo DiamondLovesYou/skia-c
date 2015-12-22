@@ -278,7 +278,7 @@ sk_surface_t* sk_new_render_target_surface(gr_context_t* ctxt,
     return NULL;
   }
 
-  return SkSurface::NewRenderTarget(ctxt, image_info);
+  return SkSurface::NewScratchRenderTarget(ctxt, image_info);
 }
 
 sk_image_t* sk_new_image_snapshot(sk_surface_t* sk_surface) {
