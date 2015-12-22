@@ -297,6 +297,7 @@ extern "C" {
                                     const bool relative);
   SK_API sk_error_t sk_path_cubic_to(sk_path_t* path, const sk_point_t p1, const sk_point_t p2,
                                      const sk_point_t p3, const bool relative);
+  SK_API void sk_path_close(sk_path_t* path);
   SK_API int sk_path_count_points(const sk_path_t* path);
   SK_API sk_point_t sk_path_get_point(const sk_path_t* path, const int index);
 

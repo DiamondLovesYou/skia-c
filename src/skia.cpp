@@ -669,6 +669,9 @@ sk_error_t sk_path_cubic_to(sk_path_t* path, const sk_point_t p1, const sk_point
 
   return sk_no_error;
 }
+void sk_path_close(sk_path_t* path) {
+  path->close();
+}
 int sk_path_count_points(const sk_path_t* path) {
   assert(path != NULL);
 
