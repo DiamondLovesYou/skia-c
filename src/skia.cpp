@@ -405,20 +405,12 @@ sk_error_t sk_paint_reset(sk_paint_t* sk_paint)  {
     return sk_no_error;
 }
 
-sk_color_t sk_paint_get_color(sk_paint_t* sk_paint, sk_color_t* colorOut) {
-    if (!(sk_paint && colorOut)) {
-        return sk_null_pointer_error;
-    }
-    *colorOut = sk_paint->getColor();
-    return sk_no_error;
+sk_color_t sk_paint_get_color(sk_paint_t* sk_paint) {
+    return sk_paint->getColor();
 }
 
-sk_error_t sk_paint_set_color(sk_paint_t* sk_paint, sk_color_t color)  {
-    if (!sk_paint) {
-        return sk_null_pointer_error;
-    }
+void sk_paint_set_color(sk_paint_t* sk_paint, sk_color_t color)  {
     sk_paint->setColor(color);
-    return sk_no_error;
 }
 
 // The following are canvas draw commands

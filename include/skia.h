@@ -255,8 +255,8 @@ extern "C" {
   /* skpaint */
 
   SK_API sk_error_t sk_paint_reset(sk_paint_t*);
-  SK_API sk_error_t sk_paint_get_color(const sk_paint_t*, sk_color_t* colorOut);
-  SK_API sk_error_t sk_paint_set_color(sk_paint_t*, sk_color_t);
+  SK_API sk_color_t sk_paint_get_color(const sk_paint_t*);
+  SK_API void sk_paint_set_color(sk_paint_t*, sk_color_t);
 
   /* TODO:  all other paint gettrs and setters. */
 
