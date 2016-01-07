@@ -90,6 +90,8 @@ extern "C" {
 
   typedef struct gr_context_struct gr_context_t;
 
+  typedef intptr_t GrBackendObject;
+
 #define SK_API
 #endif  /* SKIA_IMPLEMENTATION */
 
@@ -165,6 +167,11 @@ extern "C" {
     sk_budgeted = 1,
   } sk_cache_management_t;
 
+  typedef enum {
+    gr_context_flush_none = 0,
+    gr_context_flush_discard = 0x2,
+  } gr_context_flush_bits_t;
+
 
   /*typedef enum {
     sk_unknown_pixel_geometry = 0,
@@ -211,18 +218,15 @@ extern "C" {
   /* return NULL on error */
   SK_API sk_surface_t* sk_new_raster_surface(sk_isize_t size);
 
-  SK_API sk_surface_t* sk_new_raster_direct_surface(sk_isize_t size,
-                                                    sk_color_type_t colorType,
-                                                    void* pixelAddress,
-                                                    size_t rowBytes,
-                                                    sk_release_procedure_t proc,
-                                                    void* context);
+  SK_API sk_surface_t* sk_new_raster_direct_surface(const sk_image_info_t, void*, const size_t);
 
   SK_API sk_surface_t* sk_new_render_target_direct_surface(sk_render_target_t*);
   SK_API sk_surface_t* sk_new_render_target_surface(gr_context_t* ctxt,
                                                     const sk_cache_management_t budget,
                                                     const sk_image_info_t img_info);
   SK_API sk_image_t* sk_new_image_snapshot(sk_surface_t*);
+  SK_API GrBackendObject sk_image_get_gr_backing_handle(sk_image_t*);
+  SK_API sk_image_info_t sk_image_image_info(sk_image_t*);
 
   SK_API sk_data_t* sk_new_data(const void* data,
                                 size_t size,
@@ -247,6 +251,7 @@ extern "C" {
                                          const void** pixelsOut);
 
   SK_API sk_error_t sk_surface_get_size(const sk_surface_t*, sk_isize_t* sizeOut);
+  SK_API sk_image_info_t sk_surface_get_image_info(const sk_surface_t*);
 
   SK_API sk_error_t sk_image_get_size(const sk_image_t*, sk_isize_t* sizeOut);
 
@@ -257,13 +262,19 @@ extern "C" {
   SK_API sk_error_t sk_paint_reset(sk_paint_t*);
   SK_API sk_color_t sk_paint_get_color(const sk_paint_t*);
   SK_API void sk_paint_set_color(sk_paint_t*, sk_color_t);
+  SK_API sk_typeface_t* sk_paint_get_typeface(const sk_paint_t* paint);
+  SK_API void sk_paint_set_typeface(sk_paint_t* paint, sk_typeface_t* tf);
+  SK_API SkPaint::Align sk_paint_get_text_align(const sk_paint_t* paint);
+  SK_API void sk_paint_set_text_align(sk_paint_t* paint, const SkPaint::Align align);
+  SK_API SkPaint::TextEncoding sk_paint_get_text_encoding(const sk_paint_t* paint);
+  SK_API void sk_paint_set_text_encoding(sk_paint_t* paint, const SkPaint::TextEncoding encoding);
 
   /* TODO:  all other paint gettrs and setters. */
 
   /* The following are canvas draw commands  */
 
   SK_API sk_error_t sk_flush(sk_surface_t* sk_surface);
-
+  SK_API void sk_surface_discard(sk_surface_t* surface);
   SK_API sk_error_t sk_save(sk_surface_t* sk_surface, int* saveCount);
   SK_API sk_error_t sk_restore(sk_surface_t* sk_surface);
   SK_API sk_error_t sk_restore_to_count(sk_surface_t* sk_surface, int saveCount);
@@ -271,6 +282,9 @@ extern "C" {
   SK_API sk_error_t sk_translate(sk_surface_t* sk_surface, float dx, float dy);
   SK_API sk_error_t sk_scale(sk_surface_t* sk_surface, float sx, float sy);
   SK_API sk_error_t sk_rotate(sk_surface_t* sk_surface, float degrees);
+
+  SK_API int sk_surface_save_layer_alpha(sk_surface_t* surface, const sk_rect_t* bounds,
+                                         const uint8_t alpha);
 
   SK_API sk_error_t sk_clip_rect(sk_surface_t* sk_surface, sk_rect_t rect);
   SK_API sk_error_t sk_draw_paint(sk_surface_t* sk_surface, sk_paint_t* sk_paint);
@@ -282,7 +296,7 @@ extern "C" {
   /*SK_API sk_error_t sk_draw_image_rect(sk_surface_t* sk_surface, const sk_paint_t* paint,
                                        const sk_rect_t* src, sk_rect_t dest,
                                        const sk_image_t* img, const sk_src_rect_constraint_t constraint);*/
-  SK_API sk_error_t sk_draw_text(sk_surface_t* sk_surface, const sk_point_t* sk_paint,
+  SK_API sk_error_t sk_draw_text(sk_surface_t* sk_surface, const sk_paint_t* sk_paint,
                                  sk_point_t pos, const void* text, const size_t text_length);
 
   /* sk_path_t */
@@ -301,14 +315,13 @@ extern "C" {
   SK_API int sk_path_count_points(const sk_path_t* path);
   SK_API sk_point_t sk_path_get_point(const sk_path_t* path, const int index);
 
-
-  /* SkPaint? */
-
   SK_API sk_color_t sk_color_from_argb(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
   SK_API uint8_t sk_color_get_a(sk_color_t color);
   SK_API uint8_t sk_color_get_r(sk_color_t color);
   SK_API uint8_t sk_color_get_g(sk_color_t color);
   SK_API uint8_t sk_color_get_b(sk_color_t color);
+
+  SK_API void gr_context_flush(gr_context_t* gr, gr_context_flush_bits_t bits);
 
 #ifdef __cplusplus
 }
