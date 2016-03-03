@@ -13,6 +13,8 @@
 #include "SkPaint.h"
 #include "SkTypeface.h"
 
+#include "SkCornerPathEffect.h"
+
 #include "GrContext.h"
 #include "GrTexture.h"
 
@@ -25,16 +27,26 @@ public:
     explicit sk_paint_t(const sk_paint_t& paint) : SkPaint(paint) { }
 };
 
+typedef SkBitmap sk_bitmap_t;
+typedef SkColorTable sk_color_table_t;
+typedef SkPathEffect sk_path_effect_t;
 typedef SkSurface sk_surface_t;
 typedef SkImage sk_image_t;
 typedef SkData sk_data_t;
 typedef SkPath sk_path_t;
 typedef SkTypeface sk_typeface_t;
-typedef SkTypeface::Style sk_typeface_style_t;
+typedef SkRegion sk_region_t;
+typedef SkStrokeRec sk_stroke_rec_t;
+
+typedef SkMatrix sk_matrix_t;
 
 typedef GrRenderTarget sk_render_target_t;
 typedef GrRenderTarget gr_render_target_t;
 typedef GrContext gr_context_t;
+
+typedef SkTypeface::Style sk_typeface_style_t;
+typedef SkPath::Verb sk_path_verb_t;
+typedef SkPath::Iter sk_path_iter_t;
 
 #ifndef SKIA_IMPLEMENTATION
 #define SKIA_IMPLEMENTATION 1
@@ -118,6 +130,7 @@ extern "C" {
         out = kGray_8_SkColorType;
         break;*/
     default:
+      out = sk_unknown_color_type;
       return sk_bad_arg_error;
     }
 
@@ -264,6 +277,19 @@ extern "C" {
     o.alpha_type = sk_unknown_alpha_type;
     o.color_profile = sk_linear_color_profile_type;
     return o;
+  }
+
+  void sk_path_effect_ref(sk_path_effect_t* effect) {
+    effect->ref();
+  }
+  void sk_path_effect_unref(sk_path_effect_t* effect) {
+    effect->unref();
+  }
+  void sk_color_table_ref(sk_color_table_t* tbl) {
+    tbl->ref();
+  }
+  void sk_color_table_unref(sk_color_table_t* tbl) {
+    tbl->unref();
   }
 
   sk_error_t sk_surface_ref(sk_surface_t* sk_surface) {
@@ -519,6 +545,83 @@ extern "C" {
 
   // /Typeface
 
+  // Effect
+
+  sk_path_effect_t* sk_new_corner_path_effect(SkScalar radius) {
+    return SkCornerPathEffect::Create(radius);
+  }
+  bool sk_path_effect_filter_path(const sk_path_effect_t* effect, sk_path_t* dest,
+                                  const sk_path_t* src, sk_stroke_rec_t* stroke,
+                                  const sk_rect_t* cull) {
+    if(cull != NULL) {
+      const SkRect skcull = to_rect(*cull);
+      return effect->filterPath(dest, *src, stroke, &skcull);
+    } else {
+      return effect->filterPath(dest, *src, stroke, NULL);
+    }
+  }
+
+  // /Effect
+
+  // ColorTable
+
+  sk_color_table_t* sk_new_color_table(const SkPMColor* colors, const size_t len,
+                                       const sk_alpha_type_t alpha_type) {
+    SkAlphaType skat;
+    if(alpha_type_to_skia(alpha_type, skat)) {
+      return NULL;
+    } else {
+      return SkNEW(SkColorTable(colors, (int) len, skat));
+    }
+  }
+
+  // /ColorTable
+
+  // Bitmap
+
+  sk_bitmap_t* sk_new_empty_bitmap() {
+    return SkNEW(sk_bitmap_t);
+  }
+  void sk_reset_bitmap(sk_bitmap_t* bm) {
+    bm->reset();
+  }
+  void sk_delete_bitmap(sk_bitmap_t* bm) {
+    delete bm;
+  }
+
+  bool sk_bitmap_draws_nothing(const sk_bitmap_t* bm) {
+    return bm->drawsNothing();
+  }
+
+  bool sk_bitmap_get_immutable(const sk_bitmap_t* bm) {
+    return bm->isImmutable();
+  }
+  void sk_bitmap_set_immutable(sk_bitmap_t* bm) {
+    bm->setImmutable();
+  }
+  size_t sk_bitmap_row_bytes(const sk_bitmap_t* bm) {
+    return bm->rowBytes();
+  }
+  sk_image_info_t sk_bitmap_get_image_info(const sk_bitmap_t* bm) {
+    sk_image_info_t info = sk_default_image_info();
+    image_info_from_skia(bm->info(), info);
+    return info;
+  }
+  bool sk_bitmap_set_image_info(sk_bitmap_t* bm, const sk_image_info_t info,
+                                const size_t row_bytes) {
+    SkImageInfo sk_info;
+    image_info_to_skia(info, sk_info);
+    return bm->setInfo(sk_info, row_bytes);
+  }
+  void sk_bitmap_set_pixels(sk_bitmap_t* bm, void* pixels, sk_color_table_t* ctable) {
+    bm->setPixels(pixels, ctable);
+  }
+  void* sk_bitmap_get_pixels(const sk_bitmap_t* bm) {
+    return bm->getPixels();
+  }
+
+  // /Bitmap
+
   sk_error_t sk_paint_reset(sk_paint_t* sk_paint)  {
     if (!sk_paint) {
       return sk_null_pointer_error;
@@ -594,6 +697,12 @@ extern "C" {
   void sk_paint_set_style(sk_paint_t* paint, const SkPaint::Style s) {
     paint->setStyle(s);
   }
+  sk_path_effect_t* sk_paint_get_path_effect(const sk_paint_t* paint) {
+    return paint->getPathEffect();
+  }
+  void sk_paint_set_path_effect(sk_paint_t* paint, sk_path_effect_t* effect) {
+    paint->setPathEffect(effect);
+  }
 
   SkScalar sk_paint_measure_text(const sk_paint_t* paint, const void* text, const size_t length,
                                  sk_rect_t* bounds, SkScalar scale) {
@@ -668,6 +777,10 @@ extern "C" {
     return sk_no_error;
   }
 
+  void sk_surface_clear(sk_surface_t* surface, const sk_color_t color) {
+    surface->getCanvas()->clear(color);
+  }
+
   int sk_surface_save_layer_alpha(sk_surface_t* surface, const sk_rect_t* bounds,
                                   const uint8_t alpha) {
     if(bounds != NULL) {
@@ -734,6 +847,23 @@ extern "C" {
     sk_surface->getCanvas()->drawPath(*path, *sk_paint);
     return sk_no_error;
   }
+  void sk_draw_bitmap_rect_to_rect(sk_surface_t* surface, const sk_paint_t* paint,
+                                   const sk_bitmap_t* bitmap, const sk_rect_t* src,
+                                   const sk_rect_t dest, const bool bleed) {
+    SkCanvas::DrawBitmapRectFlags flags = SkCanvas::kNone_DrawBitmapRectFlag;
+    if(bleed) {
+      flags = SkCanvas::kBleed_DrawBitmapRectFlag;
+    }
+
+    if(src != NULL) {
+      SkRect sksrc = to_rect(*src);
+      surface->getCanvas()->drawBitmapRectToRect(*bitmap, &sksrc, to_rect(dest),
+                                                 paint, flags);
+    } else {
+      surface->getCanvas()->drawBitmapRectToRect(*bitmap, NULL, to_rect(dest),
+                                                 paint, flags);
+    }
+  }
   /*sk_error_t sk_draw_image_rect(sk_surface_t* sk_surface, const sk_paint_t* paint,
     const sk_rect_t* src, sk_rect_t dest,
     const sk_image_t* img, const sk_src_rect_constraint_t constraint) {
@@ -777,13 +907,13 @@ extern "C" {
   // sk_path_t
 
   sk_path_t* sk_new_path() {
-    return new SkPath();
+    return SkNEW(SkPath);
   }
   sk_path_t* sk_clone_path(const sk_path_t* path) {
     if(path == NULL) {
       return NULL;
     } else {
-      return new SkPath(*path);
+      return SkNEW(SkPath(*path));
     }
   }
   void sk_del_path(sk_path_t* path) {
@@ -895,6 +1025,23 @@ extern "C" {
         };
   }
 
+  void sk_path_init_iter(sk_path_iter_t* iter, const sk_path_t* path, const bool force_close) {
+    new (iter) SkPath::Iter(*path, force_close);
+  }
+  void sk_path_deinit_iter(sk_path_iter_t* iter) {
+    iter->~Iter();
+  }
+  sk_path_verb_t sk_path_iter_next(sk_path_iter_t* iter, sk_point_t pts[4], const bool consume_degerate) {
+    SkPoint skpts[4] = {
+      { pts[0].x, pts[0].y },
+      { pts[1].x, pts[1].y },
+      { pts[2].x, pts[2].y },
+      { pts[3].x, pts[3].y },
+    };
+
+    return iter->next(skpts, consume_degerate);
+  }
+
   // SkPaint?
 
   sk_color_t sk_color_from_argb(uint8_t a, uint8_t r, uint8_t g, uint8_t b)  {
@@ -915,6 +1062,9 @@ extern "C" {
 
   uint8_t sk_color_get_b(sk_color_t color)  {
     return SkColorGetB(color);
+  }
+  sk_color_t sk_color_premul(sk_color_t in) {
+    return SkPreMultiplyColor(in);
   }
 
   void gr_context_flush(gr_context_t* gr, gr_context_flush_bits_t bits) {
